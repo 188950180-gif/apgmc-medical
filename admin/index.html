@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APGMC 管理后台</title>
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', 'Microsoft YaHei', sans-serif; background: #f5f5f5; }
+        .cms-container { min-height: 100vh; }
+    </style>
+</head>
+<body>
+    <!-- Decap CMS Admin Interface -->
+    <div id="nc-root"></div>
+    <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+    <script>
+        CMS.init({
+            config: {
+                backend: {
+                    name: 'git-gateway',
+                    branch: 'main'
+                },
+                local_backend: true,
+                media_folder: 'static/uploads',
+                public_folder: '/uploads',
+                locale: 'zh',
+                collections: [
+                    {
+                        name: 'consultations',
+                        label: '咨询管理',
+                        folder: 'content/consultations',
+                        create: true,
+                        slug: '{{year}}-{{month}}-{{day}}-{{slug}}',
+                        fields: [
+                            { name: 'name', label: '姓名', widget: 'string' },
+                            { name: 'email', label: '邮箱', widget: 'string' },
+                            { name: 'phone', label: '电话', widget: 'string', required: false },
+                            { name: 'country', label: '国家', widget: 'string' },
+                            { name: 'condition', label: '病种/需求', widget: 'text' },
+                            { name: 'status', label: '状态', widget: 'select',
+                              options: ['待处理', '处理中', '已完成', '已转化'],
+                              default: '待处理' },
+                            { name: 'priority', label: '优先级', widget: 'select',
+                              options: ['普通', '高', '紧急'], default: '普通' },
+                            { name: 'source', label: '来源', widget: 'select',
+                              options: ['网站', 'Tidio', '邮件', '其他'] },
+                            { name: 'date', label: '咨询日期', widget: 'datetime' },
+                            { name: 'notes', label: '处理备注', widget: 'markdown', required: false }
+                        ]
+                    },
+                    {
+                        name: 'orders',
+                        label: '订单管理',
+                        folder: 'content/orders',
+                        create: true,
+                        slug: '{{year}}{{month}}{{day}}-{{slug}}',
+                        fields: [
+                            { name: 'order_id', label: '订单编号', widget: 'string' },
+                            { name: 'customer_name', label: '客户姓名', widget: 'string' },
+                            { name: 'customer_email', label: '客户邮箱', widget: 'string' },
+                            { name: 'package', label: '套餐', widget: 'select',
+                              options: ['Basic - $200', 'Standard - $350', 'Full Service - $800'] },
+                            { name: 'amount', label: '金额 (USD)', widget: 'number' },
+                            { name: 'status', label: '订单状态', widget: 'select',
+                              options: ['待支付', '已支付', '已完成', '已取消', '已退款'],
+                              default: '待支付' },
+                            { name: 'hospital', label: '选择医院', widget: 'select',
+                              options: ['Changde Xiangya Hospital', 'HKU Shenzhen Hospital'] },
+                            { name: 'payment_method', label: '支付方式', widget: 'select',
+                              options: ['Stripe', 'Alipay', 'WeChat', '银行转账'], required: false },
+                            { name: 'order_date', label: '订单日期', widget: 'datetime' },
+                            { name: 'notes', label: '备注', widget: 'markdown', required: false }
+                        ]
+                    },
+                    {
+                        name: 'hospitals',
+                        label: '医院管理',
+                        folder: 'content/hospitals',
+                        create: true,
+                        slug: '{{slug}}',
+                        fields: [
+                            { name: 'name', label: '中文名称', widget: 'string' },
+                            { name: 'name_en', label: '英文名称', widget: 'string' },
+                            { name: 'type', label: '合作类型', widget: 'select',
+                              options: ['试点医院', '正式合作', '待添加'] },
+                            { name: 'level', label: '医院等级', widget: 'select',
+                              options: ['三甲', '三乙', '二甲', '其他'] },
+                            { name: 'specialty', label: '特色科室', widget: 'list' },
+                            { name: 'address', label: '地址', widget: 'string' },
+                            { name: 'website', label: '官网链接', widget: 'string', required: false },
+                            { name: 'phone', label: '联系电话', widget: 'string', required: false },
+                            { name: 'image', label: '医院图片', widget: 'image', required: false },
+                            { name: 'description', label: '简介', widget: 'markdown' },
+                            { name: 'order', label: '排序', widget: 'number', default: 0 }
+                        ]
+                    },
+                    {
+                        name: 'packages',
+                        label: '套餐管理',
+                        folder: 'content/packages',
+                        create: true,
+                        slug: '{{slug}}',
+                        fields: [
+                            { name: 'name', label: '套餐名称', widget: 'string' },
+                            { name: 'name_en', label: '英文名称', widget: 'string' },
+                            { name: 'price', label: '价格 (USD)', widget: 'number' },
+                            { name: 'features', label: '服务内容', widget: 'list' },
+                            { name: 'popular', label: '设为推荐', widget: 'boolean', default: false },
+                            { name: 'order', label: '排序', widget: 'number', default: 0 }
+                        ]
+                    },
+                    {
+                        name: 'faq',
+                        label: 'FAQ管理',
+                        folder: 'content/faq',
+                        create: true,
+                        slug: '{{slug}}',
+                        fields: [
+                            { name: 'question', label: '问题', widget: 'string' },
+                            { name: 'answer', label: '答案', widget: 'markdown' },
+                            { name: 'category', label: '分类', widget: 'select',
+                              options: ['费用', '流程', '签证', '医院', '服务', '其他'] },
+                            { name: 'order', label: '排序', widget: 'number', default: 0 }
+                        ]
+                    }
+                ]
+            }
+        });
+    </script>
+</body>
+</html>

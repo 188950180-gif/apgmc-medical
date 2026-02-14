@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APGMC 智能助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* Chat Button */
+        .chat-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #006D77 0%, #005660 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,109,119,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: transform 0.3s ease;
+        }
+        .chat-button:hover { transform: scale(1.1); }
+        .chat-button svg { width: 28px; height: 28px; fill: white; }
+        
+        /* Chat Window */
+        .chat-window {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 380px;
+            height: 500px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 10000;
+            overflow: hidden;
+        }
+        .chat-window.open { display: flex; }
+        
+        /* Chat Header */
+        .chat-header {
+            background: linear-gradient(135deg, #006D77 0%, #005660 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .chat-avatar {
+            width: 45px;
+            height: 45px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .chat-info h3 { font-size: 16px; margin-bottom: 2px; }
+        .chat-info p { font-size: 12px; opacity: 0.9; }
+        .chat-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.9;
+        }
+        
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        .message {
+            margin-bottom: 15px;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .message.bot { margin-right: auto; }
+        .message.user { margin-left: auto; background: #006D77; color: white; }
+        
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .message.bot .message-content { background: white; border-bottom-left-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .message.user .message-content { background: #006D77; color: white; border-bottom-right-radius: 4px; }
+        
+        .quick-replies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .quick-reply {
+            background: white;
+            border: 1px solid #006D77;
+            color: #006D77;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .quick-reply:hover { background: #006D77; color: white; }
+        
+        /* Chat Input */
+        .chat-input-area {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+        }
+        .chat-input:focus { border-color: #006D77; }
+        .chat-send {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #006D77 0%, #005660 100%);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+        .chat-send:hover { transform: scale(1.05); }
+        .chat-send svg { width: 20px; height: 20px; fill: white; }
+        
+        /* Typing Indicator */
+        .typing { display: none; padding: 10px 20px; }
+        .typing.active { display: flex; gap: 5px; }
+        .typing span {
+            width: 8px;
+            height: 8px;
+            background: #006D77;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        .typing span:nth-child(1) { animation-delay: 0s; }
+        .typing span:nth-child(2) { animation-delay: 0.2s; }
+        .typing span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        /* Welcome Message */
+        .welcome-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .welcome-option {
+            background: #006D77;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .welcome-option:hover { opacity: 0.9; transform: translateY(-2px); }
+        
+        /* Online Status */
+        .online-dot {
+            width: 10px;
+            height: 10px;
+            background: #10B981;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Chat Button -->
+    <div class="chat-button" onclick="toggleChat()">
+        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+    </div>
+    
+    <!-- Chat Window -->
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-header">
+            <div class="chat-avatar">🏥</div>
+            <div class="chat-info">
+                <h3><span class="online-dot"></span>APGMC 智能助手</h3>
+                <p>在线解答您的咨询</p>
+            </div>
+            <button class="chat-close" onclick="toggleChat()">×</button>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">
+                    👋 您好！欢迎咨询亚太环球共享医疗！
+                    <br><br>
+                    我是 APGMC 智能助手，很高兴为您服务。请选择您想了解的内容：
+                    <div class="welcome-options">
+                        <div class="welcome-option" onclick="sendQuick('费用/价格')">💰 费用/价格</div>
+                        <div class="welcome-option" onclick="sendQuick('预约咨询')">📅 预约咨询</div>
+                        <div class="welcome-option" onclick="sendQuick('合作医院')">🏥 合作医院</div>
+                        <div class="welcome-option" onclick="sendQuick('服务套餐')">📦 服务套餐</div>
+                        <div class="welcome-option" onclick="sendQuick('联系客服')">📞 联系客服</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="typing" id="typing">
+            <span></span><span></span><span></span>
+        </div>
+        
+        <div class="chat-input-area">
+            <input type="text" class="chat-input" id="chatInput" placeholder="输入您的问题..." onkeypress="handleKeyPress(event)">
+            <button class="chat-send" onclick="sendMessage()">
+                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Tidio External Chat Integration (Optional) -->
+    <!--
+    <script src="//code.tidio.co/YOUR_PUBLIC_KEY.js"></script>
+    <script>
+        window.tidioChatApi.onReady = function() {
+            tidioChatApi.setMessage('Welcome to APGMC! How can I help you?');
+        };
+    </script>
+    -->
+    
+    <script>
+        const chatWindow = document.getElementById('chatWindow');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const typing = document.getElementById('typing');
+        
+        // Knowledge Base
+        const knowledgeBase = {
+            '费用': {
+                answer: `💰 **服务费用参考**：
+
+**套餐价格**：
+• Basic（基础）: $200/人
+  - 医院预约 + 行程规划 + 在线咨询 + 报告翻译
+
+• Standard（标准）: $350/人
+  - 包含 Basic 所有服务
+  - 接机服务 + 1天医疗陪同
+
+• Full Service（全包）: $800/人
+  - 包含 Standard 所有服务
+  - 医疗翻译 + 3天陪诊 + 24/7热线
+
+**说明**：医院费用另计，需根据具体治疗方案确定`,
+                quickReplies: ['预约咨询', '查看套餐详情', '联系客服']
+            },
+            '价格': {
+                answer: `💰 **价格参考**：
+
+与欧美相比，在中国就医可节省 **50%** 以上费用。
+
+| 项目 | 中国 | 欧美 |
+|------|------|------|
+| 肿瘤筛查 | $500-800 | $2000-3000 |
+| 心血管检查 | $800-1200 | $3000-5000 |
+| 全面体检 | $300-500 | $1000-2000 |
+
+**立即预约获取精确报价**`,
+                quickReplies: ['立即预约', '更多详情']
+            },
+            '预约': {
+                answer: `📅 **预约流程**：
+
+1️⃣ **免费咨询** - 提交您的需求，24小时内回复
+
+2️⃣ **获取方案** - 医院给出治疗方案和费用估算
+
+3️⃣ **支付定金** - 预定费 $200-500（24h可退）
+
+4️⃣ **办理签证** - 我们协助您办理医疗签证
+
+5️⃣ **就医服务** - 接机、陪诊、翻译一站式服务
+
+**平均整体行程：5-7天**`,
+                quickReplies: ['开始预约', '需要多长时间', '费用多少']
+            },
+            '医院': {
+                answer: `🏥 **合作医院**：
+
+**试点医院**：
+• **Changde Xiangya Hospital**（常德湘雅）
+  - 三甲医院，肿瘤、心血管、体检特色
+
+• **HKU Shenzhen Hospital**（深圳港大）
+  - 深港合作，国际标准，双语服务
+
+**即将合作**：
+• 北京协和医院
+• 上海华山医院
+• 广州中山医院`,
+                quickReplies: ['查看详情', '预约这两家医院', '其他医院']
+            },
+            '套餐': {
+                answer: `📦 **服务套餐对比**：
+
+| 服务内容 | Basic $200 | Standard $350 | Full $800 |
+|----------|------------|--------------|-----------|
+| 医院预约 | ✅ | ✅ | ✅ |
+| 行程规划 | ✅ | ✅ | ✅ |
+| 在线咨询 | ✅ | ✅ | ✅ |
+| 报告翻译 | ✅ | ✅ | ✅ |
+| 接机服务 | ❌ | ✅ | ✅ |
+| 医疗翻译 | ❌ | ❌ | ✅ |
+| 陪诊服务 | ❌ | 1天 | 3天 |
+| 24/7热线 | ❌ | ❌ | ✅`,
+                quickReplies: ['选择套餐', '区别是什么', '预约咨询']
+            },
+            '流程': {
+                answer: `🔄 **就医流程**：
+
+```
+步骤1：咨询（免费）
+   └── 提交需求 → 24h内回复
+
+步骤2：方案（免费）
+   └── 医院回复 → 费用估算 → 行程建议
+
+步骤3：预约（付$200-500）
+   └── 预定费锁定名额 → 24h可退
+
+步骤4：签证+机票
+   └── 自行办理 / 我们协助
+
+步骤5：就医
+   └── 接机 → 陪诊 → 治疗
+````,
+                quickReplies: ['开始预约', '需要签证吗']
+            },
+            '签证': {
+                answer: `🛂 **签证说明**：
+
+**免签政策**：
+• 多国公民可免签15-30天
+• 具体请查询您的国籍
+
+**医疗签证**：
+• 需停留超过免签期限
+• 我们协助办理医疗签证
+
+**所需材料**：
+• 护照
+• 医院预约函
+• 资金证明
+• 行程安排`,
+                quickReplies: ['办理签证', '我的国家免签吗']
+            },
+            '退款': {
+                answer: `💵 **退款政策**：
+
+• **预定费**：24小时内可全额退款
+• **超过24小时**：按实际情况处理
+• **服务费**：根据服务进度协商
+
+**退款流程**：
+1. 联系客服
+2. 提供订单信息
+3. 审核后3-5个工作日到账`,
+                quickReplies: ['申请退款', '联系客服']
+            },
+            '语言': {
+                answer: `🗣️ **语言服务**：
+
+**全程中文陪同**：
+• 医疗翻译（专业医学术语）
+• 生活翻译（日常沟通）
+• 陪同就诊（与医生沟通）
+
+**医院支持**：
+• 深圳港大医院：双语服务
+• 其他医院：全程翻译陪同`,
+                quickReplies: ['预约', '了解更多']
+            },
+            '时间': {
+                answer: `⏱️ **时间安排**：
+
+**整体行程**：5-7天
+
+**检测时间**：
+• 基础体检：1天
+• 专项检查：2-3天
+• 全面评估：3-5天
+
+**建议安排**：
+• 第1天：抵达，休息
+• 第2天：入院检查
+• 第3-4天：诊断/治疗
+• 第5天：报告解读，返程`,
+                quickReplies: ['预约行程', '最快什么时候']
+            },
+            '联系': {
+                answer: `📞 **联系方式**：
+
+**客服热线**：请填写咨询表单
+
+**工作时间**：
+• 周一至周五：9:00-18:00
+• 周末：10:00-17:00
+
+**紧急情况**：
+• 24/7 热线（仅全包套餐客户）
+
+**立即咨询**👇`,
+                quickReplies: ['开始预约', '发送邮件']
+            }
+        };
+        
+        function toggleChat() {
+            chatWindow.classList.toggle('open');
+        }
+        
+        function sendQuick(text) {
+            document.getElementById('chatInput').value = text;
+            sendMessage();
+        }
+        
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+        
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+            
+            addMessage(text, 'user');
+            chatInput.value = '';
+            
+            // Show typing
+            typing.classList.add('active');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Simulate bot response
+            setTimeout(() => {
+                typing.classList.remove('active');
+                const response = getResponse(text);
+                addMessage(response.text, 'bot', response.quickReplies);
+            }, 1000);
+        }
+        
+        function addMessage(text, type, quickReplies = []) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            
+            let html = `<div class="message-content">${text}`;
+            
+            if (quickReplies.length > 0) {
+                html += '<div class="quick-replies">';
+                quickReplies.forEach(reply => {
+                    html += `<span class="quick-reply" onclick="sendQuick('${reply}')">${reply}</span>`;
+                });
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            div.innerHTML = html;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function getResponse(text) {
+            const lower = text.toLowerCase();
+            
+            // Match keywords
+            for (const [key, data] of Object.entries(knowledgeBase)) {
+                if (lower.includes(key.toLowerCase()) || 
+                    key.toLowerCase().includes(lower.substring(0, Math.min(3, lower.length)))) {
+                    return data;
+                }
+            }
+            
+            // Default response
+            return {
+                answer: `感谢您的咨询！😊
+
+您可以：
+• 直接预约：填写下方表单
+• 了解更多：查看服务套餐
+• 联系客服：获取专业解答
+
+**我们会在24小时内回复您！**`,
+                quickReplies: ['开始预约', '服务套餐', '联系客服']
+            };
+        }
+    </script>
+</body>
+</html>
